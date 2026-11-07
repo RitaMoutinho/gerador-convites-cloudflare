@@ -55,9 +55,40 @@ async function pool(items, n, fn) {
         // mesma regex ampla do servidor: pega até o que só aparece dentro dos blocos de dados do Canva
         const refs = new Set([...html.toString('utf-8').matchAll(/_assets\/[a-zA-Z0-9_\-.\/]+\.[a-zA-Z0-9]+/g)].map((m) => m[0]));
         let miss = 0;
-        await pool([...refs], 8, async (r) => { if (!(await save(slug, r, false))) miss++; });
+        // Fila que cresce: os .js do Canva citam outros pedaços ("<16 hex>.js", carregados só quando preciso)
+        // e os .css citam fontes/imagens com url(...). Sem seguir esses, o convite quebra depois de publicado.
+        const seen = new Set(refs);
+        const queue = [...refs];
+        const followRefs = (rel) => {
+            if (!/\.(js|css)$/.test(rel)) return;
+            const file = path.join(siteRoot, slug, rel);
+            if (!fs.existsSync(file)) return;
+            const txt = fs.readFileSync(file, 'utf-8');
+            const add = (r) => { if (!seen.has(r)) { seen.add(r); queue.push(r); } };
+            for (const m of txt.matchAll(/\b[0-9a-f]{16}(?:\.[A-Za-z0-9_-]+)*\.(?:js|css)\b/g)) add('_assets/' + m[0]);
+            if (rel.endsWith('.css')) {
+                for (const m of txt.matchAll(/url\(\s*["']?([^"')]+)["']?\s*\)/g)) {
+                    const u = m[1].split(/[?#]/)[0];
+                    if (!u || /^(data:|https?:|\/\/|\/)/.test(u)) continue;
+                    add(path.posix.normalize(path.posix.join(path.posix.dirname(rel), u)));
+                }
+            }
+        };
+        let active = 0;
+        const worker = async () => {
+            while (true) {
+                const r = queue.shift();
+                if (r === undefined) { if (active === 0) return; await new Promise((x) => setTimeout(x, 30)); continue; }
+                active++;
+                try {
+                    const ok = await save(slug, r, false);
+                    if (ok) followRefs(r); else if (refs.has(r)) miss++;
+                } finally { active--; }
+            }
+        };
+        await Promise.all(Array.from({ length: 8 }, worker));
         for (const extra of ['music.mp3', 'preview.jpg']) await save(slug, extra, false);
-        console.log(`[${n}/${todo.length}] ${slug}: ${refs.size} arquivos${miss ? ` (${miss} não encontrados, pode ser normal)` : ''}`);
+        console.log(`[${n}/${todo.length}] ${slug}: ${seen.size} arquivos${miss ? ` (${miss} não encontrados, pode ser normal)` : ''}`);
     }
     fs.writeFileSync(manifestFile, JSON.stringify(slugs, null, 2));
     console.log('Pronto. Agora já pode criar/atualizar convites e publicar com segurança.');
