@@ -1,4 +1,4 @@
-// Coloca música de fundo num convite (cf2) e publica.
+// Coloca música de fundo num convite (cf3) e publica.
 // Uso: node scripts/add-music.js <slug> <caminho/da/musica.mp3>
 //  ou: node scripts/add-music.js <slug> --from <slug-de-outro-convite>   (copia a música de outro convite)
 // Acrescente --no-deploy pra só preparar sem publicar.
@@ -15,7 +15,7 @@ if (!slug || (fromIdx === -1 && (!argv[1] || argv[1].startsWith('--')))) {
     process.exit(1);
 }
 const dir = path.join(siteRoot, slug);
-if (!fs.existsSync(dir)) { console.error(`Convite "${slug}" não existe em site-cf2. Rode "npm run sync" antes.`); process.exit(1); }
+if (!fs.existsSync(dir)) { console.error(`Convite "${slug}" não existe em site-cf3. Rode "npm run sync" antes.`); process.exit(1); }
 
 const src = fromIdx !== -1 ? path.join(siteRoot, argv[fromIdx + 1], 'music.mp3') : path.resolve(argv[1]);
 if (!fs.existsSync(src)) { console.error('Arquivo de música não encontrado: ' + src); process.exit(1); }

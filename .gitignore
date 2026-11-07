@@ -4,7 +4,7 @@ frontend/dist/
 # Convites publicados e backups: ficam só no computador (sync baixa do site publicado)
 backend/site/
 backend/site-cf/
-backend/site-cf2/
+backend/site-cf3/
 backend/_archived-cf/
 backend/_backup-*/
 backend/_novo-*/

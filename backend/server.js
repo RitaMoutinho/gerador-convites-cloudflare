@@ -45,17 +45,17 @@ if (!fs.existsSync(SITE_ROOT_CF)) fs.mkdirSync(SITE_ROOT_CF, { recursive: true }
 // acima disso). Então convites NOVOS agora vão pra um segundo projeto
 // Pages, com outro endereço — os que já estão em site/ e site-cf/
 // continuam exatamente onde estão.
-const SITE_ROOT_CF2 = path.join(__dirname, 'site-cf2');
-const SITE_BASE_URL_CF2 = (process.env.SITE_BASE_URL_CF2 || 'https://digital-convites-cf2.pages.dev').replace(/\/+$/, '');
-const CF2_PROJECT_NAME = process.env.CF2_PAGES_PROJECT || 'digital-convites-cf2';
-if (!fs.existsSync(SITE_ROOT_CF2)) fs.mkdirSync(SITE_ROOT_CF2, { recursive: true });
+const SITE_ROOT_CF3 = path.join(__dirname, 'site-cf3');
+const SITE_BASE_URL_CF3 = (process.env.SITE_BASE_URL_CF3 || 'https://digital-convites-cf3.pages.dev').replace(/\/+$/, '');
+const CF3_PROJECT_NAME = process.env.CF3_PAGES_PROJECT || 'digital-convites-cf3';
+if (!fs.existsSync(SITE_ROOT_CF3)) fs.mkdirSync(SITE_ROOT_CF3, { recursive: true });
 
 // Dado um slug, descobre em qual dos três sites ele já foi publicado —
 // assim /api/update funciona pra convites antigos (Vercel) e pros dois
 // projetos Cloudflare sem precisar saber de antemão onde cada um está.
 function resolveConviteLocation(slug) {
-    if (fs.existsSync(path.join(SITE_ROOT_CF2, slug))) {
-        return { platform: 'cf2', siteRoot: SITE_ROOT_CF2, siteBaseUrl: SITE_BASE_URL_CF2 };
+    if (fs.existsSync(path.join(SITE_ROOT_CF3, slug))) {
+        return { platform: 'cf3', siteRoot: SITE_ROOT_CF3, siteBaseUrl: SITE_BASE_URL_CF3 };
     }
     if (fs.existsSync(path.join(SITE_ROOT_CF, slug))) {
         return { platform: 'cf', siteRoot: SITE_ROOT_CF, siteBaseUrl: SITE_BASE_URL_CF };
@@ -177,7 +177,7 @@ async function optimizeVideos(publicDir, { targetMB = CF_MAX_FILE_MB - 1 } = {})
 // input if it's already a bare slug — so the "update" flow accepts either.
 function extractSlug(input) {
     const trimmed = (input || '').trim();
-    for (const base of [SITE_BASE_URL, SITE_BASE_URL_CF, SITE_BASE_URL_CF2]) {
+    for (const base of [SITE_BASE_URL, SITE_BASE_URL_CF, SITE_BASE_URL_CF3]) {
         if (base && trimmed.startsWith(base)) {
             return trimmed.slice(base.length).replace(/^\/+|\/+$/g, '');
         }
@@ -620,23 +620,23 @@ function registerSlug(slug, siteRoot = SITE_ROOT) {
     syncTrackedManifest(siteRoot);
 }
 
-// A lista de convites do cf2 também fica em backend/manifests/cf2.json (essa vai pro GitHub),
+// A lista de convites do cf3 também fica em backend/manifests/cf3.json (essa vai pro GitHub),
 // pra um computador novo saber o que baixar com "npm run sync" e a trava funcionar lá também.
-const TRACKED_CF2_MANIFEST = path.join(__dirname, 'manifests', 'cf2.json');
+const TRACKED_CF3_MANIFEST = path.join(__dirname, 'manifests', 'cf3.json');
 function syncTrackedManifest(siteRoot) {
-    if (siteRoot !== SITE_ROOT_CF2) return;
+    if (siteRoot !== SITE_ROOT_CF3) return;
     try {
-        fs.mkdirSync(path.dirname(TRACKED_CF2_MANIFEST), { recursive: true });
-        fs.writeFileSync(TRACKED_CF2_MANIFEST, JSON.stringify([...new Set(loadManifest(siteRoot))].sort(), null, 2));
-    } catch (e) { console.warn('Aviso: não consegui atualizar manifests/cf2.json:', e.message); }
+        fs.mkdirSync(path.dirname(TRACKED_CF3_MANIFEST), { recursive: true });
+        fs.writeFileSync(TRACKED_CF3_MANIFEST, JSON.stringify([...new Set(loadManifest(siteRoot))].sort(), null, 2));
+    } catch (e) { console.warn('Aviso: não consegui atualizar manifests/cf3.json:', e.message); }
 }
 
 // Throws if any convite that's supposed to exist (per the manifest) is
 // missing from disk. Called right before every deploy.
 function assertNoConviteWentMissing(siteRoot = SITE_ROOT) {
     let manifest = loadManifest(siteRoot);
-    if (siteRoot === SITE_ROOT_CF2 && fs.existsSync(TRACKED_CF2_MANIFEST)) {
-        try { manifest = [...new Set([...manifest, ...JSON.parse(fs.readFileSync(TRACKED_CF2_MANIFEST, 'utf-8'))])]; } catch (e) {}
+    if (siteRoot === SITE_ROOT_CF3 && fs.existsSync(TRACKED_CF3_MANIFEST)) {
+        try { manifest = [...new Set([...manifest, ...JSON.parse(fs.readFileSync(TRACKED_CF3_MANIFEST, 'utf-8'))])]; } catch (e) {}
     }
     const missing = manifest.filter((slug) => !fs.existsSync(path.join(siteRoot, slug)));
     if (missing.length > 0) {
@@ -736,9 +736,9 @@ app.post('/api/deploy', upload.single('previewImage'), async (req, res) => {
     if (!canvaUrl) {
         return res.status(400).json({ error: 'A URL do Canva é obrigatória.' });
     }
-    if (!SITE_BASE_URL_CF2) {
+    if (!SITE_BASE_URL_CF3) {
         return res.status(500).json({
-            error: 'SITE_BASE_URL_CF2 não está configurada no backend.',
+            error: 'SITE_BASE_URL_CF3 não está configurada no backend.',
         });
     }
 
@@ -751,19 +751,19 @@ app.post('/api/deploy', upload.single('previewImage'), async (req, res) => {
         .join('-');
     const slug = [nameSlug, randomSuffix].filter(Boolean).join('-').slice(0, 80).replace(/-+$/g, '');
     // Convites NOVOS vão pro segundo projeto Cloudflare (ver comentário em
-    // SITE_ROOT_CF2) — os que já existem na Vercel e no primeiro projeto
+    // SITE_ROOT_CF3) — os que já existem na Vercel e no primeiro projeto
     // Cloudflare continuam onde estão, sem qualquer mudança nesse fluxo.
-    const publicDir = path.join(SITE_ROOT_CF2, slug);
+    const publicDir = path.join(SITE_ROOT_CF3, slug);
 
     try {
         console.log(`[${slug}] Iniciando raspagem do site: ${canvaUrl}`);
-        await scrapeConvite({ slug, canvaUrl, previewImagePath: previewImage && previewImage.path, siteRoot: SITE_ROOT_CF2, siteBaseUrl: SITE_BASE_URL_CF2 });
+        await scrapeConvite({ slug, canvaUrl, previewImagePath: previewImage && previewImage.path, siteRoot: SITE_ROOT_CF3, siteBaseUrl: SITE_BASE_URL_CF3 });
 
         console.log(`[${slug}] Fazendo deploy do site (todos os convites) para o Cloudflare Pages (projeto 2)...`);
-        deploySiteCF(SITE_ROOT_CF2, CF2_PROJECT_NAME);
-        registerSlug(slug, SITE_ROOT_CF2);
+        deploySiteCF(SITE_ROOT_CF3, CF3_PROJECT_NAME);
+        registerSlug(slug, SITE_ROOT_CF3);
 
-        const finalUrl = `${SITE_BASE_URL_CF2}/${slug}/`;
+        const finalUrl = `${SITE_BASE_URL_CF3}/${slug}/`;
         res.json({ success: true, url: finalUrl });
     } catch (error) {
         console.error(error);
@@ -801,7 +801,7 @@ app.post('/api/update', upload.single('previewImage'), async (req, res) => {
         await scrapeConvite({ slug, canvaUrl, previewImagePath: previewImage && previewImage.path, siteRoot, siteBaseUrl });
 
         console.log(`[${slug}] Fazendo deploy do site (todos os convites) para ${platform === 'vercel' ? 'a Vercel' : 'o Cloudflare Pages'}...`);
-        if (platform === 'cf2') deploySiteCF(SITE_ROOT_CF2, CF2_PROJECT_NAME);
+        if (platform === 'cf3') deploySiteCF(SITE_ROOT_CF3, CF3_PROJECT_NAME);
         else if (platform === 'cf') deploySiteCF();
         else deploySite();
 
@@ -813,7 +813,7 @@ app.post('/api/update', upload.single('previewImage'), async (req, res) => {
     }
 });
 
-const PORT = 4000;
+const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
     console.log(`Backend server running on http://localhost:${PORT}`);
     if (!SITE_BASE_URL) {

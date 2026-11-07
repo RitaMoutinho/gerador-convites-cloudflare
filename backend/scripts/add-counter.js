@@ -9,7 +9,7 @@ const { deploy, siteRoot } = require('./lib');
 const s = process.argv[2];
 if (!s) { console.error('Uso: node scripts/add-counter.js <slug>'); process.exit(1); }
 const f = path.join(siteRoot, s, 'index.html');
-if (!fs.existsSync(f)) { console.error(`Convite "${s}" não existe em site-cf2. Rode "npm run sync" antes.`); process.exit(1); }
+if (!fs.existsSync(f)) { console.error(`Convite "${s}" não existe em site-cf3. Rode "npm run sync" antes.`); process.exit(1); }
 let h = fs.readFileSync(f, 'utf-8');
 if (h.includes('digital-convites-rita/' + s)) { console.log('Esse convite já tem contador.'); process.exit(0); }
 const blk = `<script>

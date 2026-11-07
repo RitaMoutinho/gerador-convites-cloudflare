@@ -1,13 +1,13 @@
-// Funções comuns dos scripts. Os convites NOVOS ficam em backend/site-cf2 e vão pro projeto digital-convites-cf2.
+// Funções comuns dos scripts. Os convites NOVOS ficam em backend/site-cf3 e vão pro projeto digital-convites-cf3.
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
-const siteRoot = path.join(__dirname, '..', 'site-cf2');
-const PROJECT = process.env.CF2_PAGES_PROJECT || 'digital-convites-cf2';
-const BASE = (process.env.SITE_BASE_URL_CF2 || 'https://digital-convites-cf2.pages.dev').replace(/\/+$/, '');
+const siteRoot = path.join(__dirname, '..', 'site-cf3');
+const PROJECT = process.env.CF3_PAGES_PROJECT || 'digital-convites-cf3';
+const BASE = (process.env.SITE_BASE_URL_CF3 || 'https://digital-convites-cf3.pages.dev').replace(/\/+$/, '');
 const manifestFile = path.join(siteRoot, '.manifest.json');
-const trackedManifest = path.join(__dirname, '..', 'manifests', 'cf2.json');
+const trackedManifest = path.join(__dirname, '..', 'manifests', 'cf3.json');
 
 // O Cloudflare Pages publica a PASTA INTEIRA: se faltar convite aqui, ele sai do ar. Esta trava impede isso.
 function assertSynced() {

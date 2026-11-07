@@ -1,4 +1,4 @@
-// Tira um convite (cf2) do ar SEM apagar nada: move a pasta pra backend/_archived-cf/ e tira do manifesto.
+// Tira um convite (cf3) do ar SEM apagar nada: move a pasta pra backend/_archived-cf/ e tira do manifesto.
 // Uso: node scripts/archive.js <slug> [<slug2> ...]   e depois publicar:  npm run deploy
 const fs = require('fs');
 const path = require('path');
@@ -13,7 +13,7 @@ let man = rd(manifestFile);
 let tracked = rd(trackedManifest);
 for (const s of slugs) {
     const from = path.join(siteRoot, s);
-    if (!fs.existsSync(from)) { console.log(s + ': não existe em site-cf2'); continue; }
+    if (!fs.existsSync(from)) { console.log(s + ': não existe em site-cf3'); continue; }
     fs.renameSync(from, path.join(archive, `${s}-${Date.now()}`));
     man = man.filter((x) => x !== s);
     tracked = tracked.filter((x) => x !== s);

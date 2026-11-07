@@ -1,4 +1,4 @@
-// Baixa os convites do site PUBLICADO (cf2) pra pasta backend/site-cf2 deste computador.
+// Baixa os convites do site PUBLICADO (cf3) pra pasta backend/site-cf3 deste computador.
 // Rodar uma vez em computador novo, ANTES de publicar qualquer coisa: o Cloudflare Pages publica
 // a pasta inteira, então publicar sem os convites antigos tiraria eles do ar.
 // Uso: npm run sync             (baixa só o que falta)

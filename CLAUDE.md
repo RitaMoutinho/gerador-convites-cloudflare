@@ -11,12 +11,13 @@ Pega um site do **Canva** (`https://seemg.my.canva.site/...`) e publica como con
 - `rsvp/` site SEPARADO de confirmação de presença (Cloudflare Worker + D1). Ver `rsvp/README.md`.
 
 ## HOSPEDAGEM: É CLOUDFLARE PAGES. NÃO É VERCEL. (a Rita já ficou brava com isso)
-- Convites NOVOS vão pro projeto `digital-convites-cf2` → `https://digital-convites-cf2.pages.dev/<slug>/`, pasta local `backend/site-cf2/<slug>/`.
-- Cada convite é só uma pasta dentro de UM site único. **Cada deploy publica a PASTA INTEIRA** (`backend/site-cf2`): o que não estiver nela sai do ar.
-- Por isso, em computador novo, **rode `npm run sync` (em `backend/`) antes de qualquer publicação**: ele baixa do site publicado todos os convites listados em `backend/manifests/cf2.json`. A trava do servidor e dos scripts BLOQUEIA o deploy se faltar convite.
-- Convites antigos (projeto `digital-convites-cf`, `site-cf`, e Vercel) **não estão neste repositório e só podem ser mexidos no computador original**. Se ela pedir pra mexer num deles de outro computador, avise que só dá no computador de casa.
-- Limite do plano grátis: 20.000 arquivos por projeto e 25 MB por arquivo. Se o cf2 chegar perto de 20.000, criar um projeto 3.
-- Publicar à mão: `cd backend && npm run deploy` (equivale a `npx wrangler pages deploy . --project-name digital-convites-cf2 --branch main --commit-dirty=true` dentro de `site-cf2`).
+- Convites NOVOS vão pro projeto `digital-convites-cf3` → `https://digital-convites-cf3.pages.dev/<slug>/`, pasta local `backend/site-cf3/<slug>/`.
+- Cada convite é só uma pasta dentro de UM site único. **Cada deploy publica a PASTA INTEIRA** (`backend/site-cf3`): o que não estiver nela sai do ar.
+- O `cf3` é um projeto NOVO, criado só pra este repositório (a Rita vai viajar e usa este gerador em outro computador). Ele começa VAZIO: não precisa baixar nada pra começar.
+- Se este gerador for usado em mais de um computador, em cada um: antes de trabalhar `git pull` e `npm run sync` (em `backend/`, baixa os convites cf3 listados em `backend/manifests/cf3.json`); ao terminar `git add -A && git commit && git push` (a lista é atualizada sozinha a cada convite novo). A trava do servidor e dos scripts BLOQUEIA o deploy se faltar convite que a lista conhece.
+- Convites antigos (projetos `digital-convites-cf2` e `digital-convites-cf`, e Vercel) **não são deste repositório e só podem ser mexidos no computador de casa** (pasta `Gerador Convites`). Se ela pedir pra mexer num deles daqui, avise que só dá lá. `/api/update` aqui só acha convites do cf3.
+- Limite do plano grátis: 20.000 arquivos por projeto e 25 MB por arquivo. Se o cf3 chegar perto de 20.000, criar um projeto 4.
+- Publicar à mão: `cd backend && npm run deploy` (equivale a `npx wrangler pages deploy . --project-name digital-convites-cf3 --branch main --commit-dirty=true` dentro de `site-cf3`).
 - Login: `npx wrangler login` uma vez por computador (ou variável `CLOUDFLARE_API_TOKEN`).
 
 ## Rodar no dia a dia
@@ -24,7 +25,7 @@ Pega um site do **Canva** (`https://seemg.my.canva.site/...`) e publica como con
 cd backend && npm start        # porta 4000
 cd frontend && npm run dev     # porta 5173
 ```
-Se aparecer "Erro ao processar e publicar o convite": 1) confira `netstat -ano | grep :4000`; 2) se o backend estava ligado há muito tempo, **reinicie** (já travou assim); 3) rode `cd backend/site-cf2 && npx wrangler pages deploy . --project-name digital-convites-cf2 --branch main --commit-dirty=true` na mão pra ver o erro real. A resposta da API traz `details` com status/signal.
+Se aparecer "Erro ao processar e publicar o convite": 1) confira `netstat -ano | grep :4000`; 2) se o backend estava ligado há muito tempo, **reinicie** (já travou assim); 3) rode `cd backend/site-cf3 && npx wrangler pages deploy . --project-name digital-convites-cf3 --branch main --commit-dirty=true` na mão pra ver o erro real. A resposta da API traz `details` com status/signal.
 No Windows/Git Bash, `robocopy` e flags com `/` quebram: use PowerShell pra isso. `sleep` longo no terminal é bloqueado: use verificação em loop.
 
 ## Pedidos comuns da Rita (e o que fazer)
