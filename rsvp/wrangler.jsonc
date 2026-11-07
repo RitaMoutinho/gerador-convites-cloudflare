@@ -1,0 +1,16 @@
+{
+  "name": "convite-presenca",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-01-01",
+  "assets": {
+    "directory": "./public",
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "convite-presenca",
+      "database_id": "46b6e671-eba9-415b-94d1-8c04236f39db"
+    }
+  ]
+}

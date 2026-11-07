@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#14090f">
+<title>Confirmação de Presença</title>
+<style>
+  :root{--card:rgba(20,11,16,.86);--ink:#f7eee3;--muted:#cdbba5;--accent:#b3122d;--accent-d:#8f0e24;--gold:#e3b86a;--line:rgba(227,184,106,.35);--field:rgba(255,255,255,.08);--ok:#7fd4a2;--no:#ff9c9c}
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);min-height:100vh;min-height:100dvh;display:flex;justify-content:center;padding:24px 16px;background:#0b0710}
+  /* fundo preso à tela (position:fixed funciona em celular; background-attachment:fixed não) */
+  body::before{content:'';position:fixed;inset:0;z-index:-1;background:#0b0710 url(bg-wide.jpg) center/cover no-repeat}
+  @media (max-aspect-ratio:1/1){body::before{background-image:url(bg-tall.jpg)}}
+  main{width:100%;max-width:480px;margin:auto}
+  .card{background:var(--card);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border:1px solid var(--line);border-radius:20px;padding:26px 22px;box-shadow:0 14px 40px rgba(0,0,0,.55)}
+  h1{margin:0 0 6px;font-size:27px;line-height:1.2;text-align:center;color:var(--gold);font-family:Georgia,"Times New Roman",serif;letter-spacing:.3px}
+  .sub{margin:0 0 22px;color:var(--muted);text-align:center;font-size:15px}
+  label.t{display:block;font-weight:600;margin:0 0 8px}
+  input[type=text],textarea{width:100%;font:inherit;font-size:16px;padding:13px 14px;border:1.5px solid var(--line);border-radius:12px;background:var(--field);color:var(--ink)}
+  input::placeholder,textarea::placeholder{color:#a8977f}
+  input[type=text]:focus,textarea:focus{outline:none;border-color:var(--gold)}
+  textarea{resize:vertical;min-height:84px}
+  .results{margin-top:8px;display:flex;flex-direction:column;gap:8px}
+  .opt{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;text-align:left;font:inherit;font-size:16px;padding:13px 14px;border:1.5px solid var(--line);border-radius:12px;background:var(--field);color:var(--ink);cursor:pointer}
+  .opt:hover,.opt:focus{border-color:var(--gold);outline:none}
+  .opt small{color:var(--muted)}
+  .hint{margin:10px 0 0;color:var(--muted);font-size:14px}
+  .big{display:flex;flex-direction:column;gap:10px;margin:6px 0 4px}
+  .big button{font:inherit;font-size:17px;font-weight:600;padding:15px;border-radius:14px;border:2px solid var(--line);background:var(--field);color:var(--ink);cursor:pointer}
+  .big button.sel.yes{border-color:var(--ok);background:rgba(127,212,162,.16);color:var(--ok)}
+  .big button.sel.no{border-color:var(--no);background:rgba(255,156,156,.14);color:var(--no)}
+  .btn{display:block;width:100%;margin-top:18px;font:inherit;font-size:17px;font-weight:700;padding:15px;border:1px solid var(--gold);border-radius:14px;background:var(--accent);color:#fff;cursor:pointer}
+  .btn:hover{background:var(--accent-d)}
+  .btn:disabled{opacity:.45;cursor:default}
+  .link{background:none;border:0;color:var(--muted);font:inherit;font-size:14px;text-decoration:underline;cursor:pointer;padding:6px 0;margin-top:10px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 0}
+  .chip{display:inline-flex;align-items:center;gap:6px;background:rgba(179,18,45,.28);border:1px solid rgba(227,184,106,.4);color:var(--ink);border-radius:999px;padding:7px 8px 7px 13px;font-size:14.5px}
+  .chip button{border:0;background:rgba(255,255,255,.18);color:inherit;width:22px;height:22px;border-radius:50%;cursor:pointer;line-height:1;font-size:15px}
+  .sec{margin-top:22px}
+  .count{margin-top:12px;padding:11px 14px;border-radius:12px;background:rgba(255,255,255,.07);font-size:15px}
+  .err{margin-top:14px;padding:11px 14px;border-radius:12px;background:rgba(255,156,156,.14);color:var(--no);font-size:15px}
+  .done{text-align:center;padding:10px 0}
+  .done .emoji{font-size:54px}
+  .done p{font-size:18px;margin:12px 0 0}
+  .hello{font-size:19px;font-weight:700;text-align:center;margin:0 0 4px}
+  .prev{margin:0 0 14px;text-align:center;color:var(--muted);font-size:14.5px}
+  [hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+  <div class="card">
+    <h1 id="title"></h1>
+    <p class="sub" id="subtitle"></p>
+
+    <!-- 1) busca do nome -->
+    <section id="s-find">
+      <label class="t" for="q">Qual o seu nome completo?</label>
+      <input type="text" id="q" autocomplete="off" autocapitalize="words" placeholder="Comece a digitar seu nome">
+      <div class="results" id="results"></div>
+      <p class="hint" id="find-hint">Só quem está na lista de convidados consegue confirmar.</p>
+    </section>
+
+    <!-- 2) resposta -->
+    <section id="s-form" hidden>
+      <p class="hello" id="hello"></p>
+      <p class="prev" id="prev" hidden></p>
+
+      <label class="t">Você confirma sua presença na festa?</label>
+      <div class="big">
+        <button type="button" id="b-yes" class="yes">Sim, pode confirmar 💗</button>
+        <button type="button" id="b-no" class="no">Não poderei comparecer 😔</button>
+      </div>
+
+      <div id="yes-part" hidden>
+        <div class="sec">
+          <label class="t" for="cq">Vai alguém com você?</label>
+          <input type="text" id="cq" autocomplete="off" placeholder="Busque o nome de quem vai junto">
+          <div class="results" id="cresults"></div>
+          <p class="hint">Só dá pra incluir quem está na lista de convidados (adultos e crianças).</p>
+          <div class="chips" id="chips"></div>
+        </div>
+        <div class="count" id="count"></div>
+        <div class="sec">
+          <label class="t" for="note">Recado ou observação (opcional)</label>
+          <textarea id="note" maxlength="500" placeholder="Ex.: alergia, restrição alimentar, chego mais tarde…"></textarea>
+        </div>
+      </div>
+
+      <div class="err" id="err" hidden></div>
+      <button class="btn" id="send" disabled>Enviar</button>
+      <div style="text-align:center"><button class="link" id="back" type="button">Não sou eu / trocar nome</button></div>
+    </section>
+
+    <!-- 3) final -->
+    <section id="s-done" class="done" hidden>
+      <div class="emoji" id="d-emoji"></div>
+      <p id="d-text"></p>
+      <button class="link" id="again" type="button">Alterar minha resposta</button>
+    </section>
+  </div>
+</main>
+
+<script src="config.js"></script>
+<script>
+(function () {
+  var E = window.EVENT || {};
+  var $ = function (id) { return document.getElementById(id); };
+  document.title = E.title || 'Confirmação de Presença';
+  $('title').textContent = E.title || 'Confirmação de Presença';
+  $('subtitle').textContent = E.subtitle || '';
+
+  var me = null;          // convidado escolhido
+  var status = null;      // 'yes' | 'no'
+  var companions = [];    // [{id,name,kid,age}]
+
+  function api(path, opts) {
+    return fetch(path, opts).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || 'Erro'); return j; }); });
+  }
+  function show(id) { ['s-find', 's-form', 's-done'].forEach(function (s) { $(s).hidden = (s !== id); }); window.scrollTo(0, 0); }
+  function gLabel(g) { return g.name + (g.kid ? ' · criança' + (g.age ? ', ' + g.age + ' anos' : '') : ''); }
+
+  // busca com atraso
+  function bindSearch(input, box, onPick, exclude) {
+    var timer = null, seq = 0;
+    input.addEventListener('input', function () {
+      clearTimeout(timer);
+      var v = input.value.trim();
+      if (v.length < 2) { box.textContent = ''; return; }
+      timer = setTimeout(function () {
+        var mine = ++seq;
+        api('/api/search?q=' + encodeURIComponent(v)).then(function (r) {
+          if (mine !== seq) return;
+          box.textContent = '';
+          var list = r.results.filter(function (g) { return !exclude || !exclude(g); });
+          if (!list.length) {
+            var p = document.createElement('p'); p.className = 'hint';
+            p.textContent = 'Não encontrei esse nome na lista. Tente só o primeiro nome e sobrenome, ou fale com os anfitriões.';
+            box.appendChild(p); return;
+          }
+          list.forEach(function (g) {
+            var b = document.createElement('button'); b.type = 'button'; b.className = 'opt';
+            var s = document.createElement('span'); s.textContent = g.name;
+            b.appendChild(s);
+            if (g.kid) { var k = document.createElement('small'); k.textContent = 'criança' + (g.age ? ' · ' + g.age + ' anos' : ''); b.appendChild(k); }
+            b.addEventListener('click', function () { onPick(g); input.value = ''; box.textContent = ''; });
+            box.appendChild(b);
+          });
+        }).catch(function () {});
+      }, 220);
+    });
+  }
+
+  function renderChips() {
+    var c = $('chips'); c.textContent = '';
+    companions.forEach(function (g, i) {
+      var chip = document.createElement('span'); chip.className = 'chip';
+      var t = document.createElement('span'); t.textContent = gLabel(g);
+      var x = document.createElement('button'); x.type = 'button'; x.setAttribute('aria-label', 'Remover'); x.textContent = '×';
+      x.addEventListener('click', function () { companions.splice(i, 1); renderChips(); });
+      chip.appendChild(t); chip.appendChild(x); c.appendChild(chip);
+    });
+    var kids = companions.filter(function (g) { return g.kid; }).length;
+    var adults = companions.length - kids + (me && !me.kid ? 1 : 0);
+    var kidsTotal = kids + (me && me.kid ? 1 : 0);
+    var parts = [adults + (adults === 1 ? ' adulto' : ' adultos')];
+    if (kidsTotal) parts.push(kidsTotal + (kidsTotal === 1 ? ' criança' : ' crianças'));
+    $('count').textContent = 'Total confirmado (incluindo você): ' + parts.join(' e ');
+    check();
+  }
+
+  function check() { $('send').disabled = !status; }
+
+  function setStatus(s) {
+    status = s;
+    $('b-yes').className = 'yes' + (s === 'yes' ? ' sel yes' : '');
+    $('b-no').className = 'no' + (s === 'no' ? ' sel no' : '');
+    $('yes-part').hidden = (s !== 'yes');
+    renderChips(); check();
+  }
+
+  function pick(g) {
+    $('err').hidden = true;
+    api('/api/guest?id=' + g.id).then(function (info) {
+      me = info.guest; companions = info.companions || [];
+      $('hello').textContent = 'Olá, ' + me.name + '!';
+      var prev = $('prev');
+      if (info.status) {
+        prev.hidden = false;
+        prev.textContent = info.status === 'yes' ? 'Você já tinha confirmado presença. Pode alterar abaixo.' : 'Você tinha avisado que não vai. Pode alterar abaixo.';
+      } else { prev.hidden = true; }
+      $('note').value = info.note || '';
+      show('s-form');
+      setStatus(info.status);
+    }).catch(function (e) { alert(e.message); });
+  }
+
+  bindSearch($('q'), $('results'), pick);
+  bindSearch($('cq'), $('cresults'), function (g) {
+    if (!companions.some(function (c) { return c.id === g.id; })) companions.push(g);
+    renderChips();
+  }, function (g) { return me && g.id === me.id; });
+
+  $('b-yes').addEventListener('click', function () { setStatus('yes'); });
+  $('b-no').addEventListener('click', function () { setStatus('no'); });
+  $('back').addEventListener('click', function () { me = null; status = null; companions = []; $('q').value = ''; $('results').textContent = ''; show('s-find'); });
+  $('again').addEventListener('click', function () { if (me) pick(me); });
+
+  $('send').addEventListener('click', function () {
+    var btn = $('send'); btn.disabled = true; btn.textContent = 'Enviando…'; $('err').hidden = true;
+    api('/api/rsvp', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ guestId: me.id, status: status, companionIds: status === 'yes' ? companions.map(function (c) { return c.id; }) : [], note: $('note').value })
+    }).then(function () {
+      $('d-emoji').textContent = status === 'yes' ? '🎉' : '💌';
+      $('d-text').textContent = status === 'yes' ? (E.thanksYes || 'Presença confirmada!') : (E.thanksNo || 'Obrigado por avisar!');
+      show('s-done');
+    }).catch(function (e) {
+      $('err').textContent = e.message; $('err').hidden = false;
+    }).then(function () { btn.textContent = 'Enviar'; check(); });
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,174 @@
+<audio id="__bgm" src="music.mp3" loop preload="auto"></audio>
+            <script>
+            (function () {
+                // Convite especial: página 0 (intro) → clique inicia a
+                // música (o próprio Canva já leva pra página 2, com o
+                // vídeo). Quando esse vídeo termina, avança sozinho pra
+                // a 1a pagina de fotos (rota /page-3) e para por ai — a música continua
+                // tocando o tempo todo (mesmo elemento <audio>).
+                var KEY = '__ac_seq_step';
+                var MAX_WAIT_MS = 15000; // teto de segurança
+
+                function startMusic() {
+                    var audio = document.getElementById('__bgm');
+                    if (audio) audio.play().catch(function () {});
+                }
+
+                // O <title> no HTML já é "Cecilia XV", mas o runtime do
+                // Canva reescreve document.title pro nome interno do
+                // projeto na hidratação e a cada troca de página. Trava
+                // no nome que a gente quer (só afeta o nome da aba).
+                var __wantTitle = 'Cecilia XV';
+                function lockTitle() {
+                    if (document.title !== __wantTitle) document.title = __wantTitle;
+                }
+                lockTitle();
+                if (typeof MutationObserver !== 'undefined') {
+                    var __tEl = document.querySelector('title');
+                    if (__tEl) new MutationObserver(lockTitle).observe(__tEl, { childList: true, characterData: true, subtree: true });
+                }
+                window.addEventListener('popstate', function () { setTimeout(lockTitle, 50); });
+
+                // Sobrou uma caixa de texto "ok" no design do Canva, que
+                // renderiza como <h1>ok</h1> embaixo de cada página. Não
+                // dá pra editar nos nossos arquivos (o conteúdo do Canva
+                // vem criptografado e é montado em runtime), então a gente
+                // só remove esse título solto assim que ele aparece.
+                function stripOkHeadings(root) {
+                    var scope = (root && root.querySelectorAll) ? root : document;
+                    var hs = scope.querySelectorAll('h1, h2, h3, h4, h5, h6');
+                    for (var i = 0; i < hs.length; i++) {
+                        if ((hs[i].textContent || '').trim().toLowerCase() === 'ok') {
+                            hs[i].remove();
+                        }
+                    }
+                }
+                stripOkHeadings(document);
+                if (typeof MutationObserver !== 'undefined') {
+                    new MutationObserver(function (muts) {
+                        for (var i = 0; i < muts.length; i++) {
+                            var added = muts[i].addedNodes;
+                            for (var j = 0; j < added.length; j++) {
+                                var nd = added[j];
+                                if (nd.nodeType !== 1) continue;
+                                if (/^H[1-6]$/.test(nd.tagName) &&
+                                    (nd.textContent || '').trim().toLowerCase() === 'ok') {
+                                    nd.remove();
+                                } else {
+                                    stripOkHeadings(nd);
+                                }
+                            }
+                        }
+                    }).observe(document.documentElement, { childList: true, subtree: true });
+                }
+
+                // Cobre a troca de página com um fade preto próprio —
+                // assim quem tá vendo não pega o "pipoco" da capa/thumbnail
+                // do vídeo do Canva carregando por baixo, nem qualquer
+                // outro flash de conteúdo enquanto a próxima página monta.
+                // Não mexe em nada do player de vídeo em si (só uma div
+                // nossa por cima), então não tem risco de quebrar o vídeo.
+                var __cover = null;
+                function getCover() {
+                    if (__cover) return __cover;
+                    __cover = document.createElement('div');
+                    __cover.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:#000;opacity:0;transition:opacity .15s ease;pointer-events:none;';
+                    document.body.appendChild(__cover);
+                    return __cover;
+                }
+                function coverShow() { getCover().style.opacity = '1'; }
+                function coverHide(delayMs) {
+                    setTimeout(function () { getCover().style.opacity = '0'; }, delayMs || 0);
+                }
+
+                function goToPage5() {
+                    var base = document.querySelector('base');
+                    var baseHref = (base && base.getAttribute('href')) || '/';
+                    var target = baseHref.replace(/\/$/, '') + '/page-3';
+                    coverShow();
+                    // O roteador interno do site exige um objeto de estado
+                    // com "key" — passar null faz ele não reconhecer a
+                    // navegação e deixar o conteúdo antigo na tela mesmo
+                    // com a URL certa.
+                    var key = Math.random().toString(36).slice(2, 8);
+                    history.pushState({ key: key }, '', target);
+                    window.dispatchEvent(new PopStateEvent('popstate', { state: { key: key } }));
+                    // Revela rápido — a página 3 monta quase na hora.
+                    coverHide(120);
+                }
+
+                function waitVideoThenAdvance() {
+                    // Versao robusta: a cada 150ms procura o <video> ATUAL
+                    // (o Canva pode trocar o elemento) e so LE o estado dele.
+                    // Avanca quando: acabou (ended), chegou ~0,35s do fim,
+                    // ou parou no fim. Se nao achar video em 6s, avanca.
+                    var done = false, started = Date.now(), lastT = 0, seenVideo = false, sawPlaying = 0;
+                    function finish() {
+                        if (done) return;
+                        done = true;
+                        clearInterval(iv);
+                        sessionStorage.setItem(KEY, "done");
+                        __began = true;
+                        coverShow();
+                        setTimeout(function () {
+                            goToPage5();
+                            // Se por algum motivo a pagina nao trocou, tenta de novo.
+                            setTimeout(function () {
+                                if (document.querySelector('video') && location.pathname.indexOf("page-2") !== -1) goToPage5();
+                            }, 700);
+                        }, 90);
+                    }
+                    var iv = setInterval(function () {
+                        if (done) return;
+                        var v = document.querySelector('video');
+                        var el = Date.now() - started;
+                        if (!v) {
+                            if (seenVideo) return finish();          // video sumiu = pagina trocou
+                            if (el > 6000) finish();
+                            return;
+                        }
+                        seenVideo = true;
+                        var t = v.currentTime, dur = v.duration;
+                        if (v.ended) return finish();
+                        if (dur && isFinite(dur) && dur - t < 0.9 && t > 1) return finish();
+                        // Neste video o Canva reinicia o clipe em ~6,35s (antes dos 7,93s do arquivo): sai antes disso.
+                        if (t >= 5.9) return finish();
+                        if (t + 1 < lastT) return finish();           // pulou de volta pro comeco (loop)
+                        lastT = t;
+                        // teto: duracao + 4s (ou 25s se a duracao for desconhecida)
+                        var cap = (dur && isFinite(dur)) ? (dur + 4) * 1000 : 25000;
+                        if (el > cap) finish();
+                    }, 50);
+                }
+
+                var __began = false;
+                function beginOnce() {
+                    if (__began || sessionStorage.getItem(KEY) !== null) return;
+                    __began = true;
+                    sessionStorage.setItem(KEY, '1');
+                    startMusic();
+                    // Cobre também essa 1ª troca (intro -> vídeo), pra
+                    // esconder a capa/thumbnail do vídeo aparecendo antes
+                    // dele carregar de verdade. Segura mais tempo SÓ aqui:
+                    // a transição do próprio Canva + o vídeo montar demora,
+                    // e com pouco tempo o preto sumia antes do flash. As
+                    // outras trocas continuam curtas como antes.
+                    var __introCover = getCover();
+                    void __introCover.offsetWidth; // força o preto a pintar já no clique
+                    __introCover.style.opacity = '1';
+                    coverHide(1100);
+                    // Não força a troca intro -> page-2: o próprio clique
+                    // do Canva já faz isso sozinho, ao mesmo tempo que
+                    // este handler roda.
+                    waitVideoThenAdvance();
+                }
+
+                document.addEventListener('click', beginOnce, true);
+
+                // Recarregamento no meio do caminho: retoma sozinho.
+                if (sessionStorage.getItem(KEY) === "done") { __began = true; } else if (sessionStorage.getItem(KEY) !== null) {
+                    startMusic();
+                    waitVideoThenAdvance();
+                }
+            })();
+            </script>

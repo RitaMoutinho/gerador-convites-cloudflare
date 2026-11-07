@@ -1,0 +1,22 @@
+node_modules/
+frontend/dist/
+
+# Convites publicados e backups: ficam só no computador (sync baixa do site publicado)
+backend/site/
+backend/site-cf/
+backend/site-cf2/
+backend/_archived-cf/
+backend/_backup-*/
+backend/_novo-*/
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Segredos
+.env
+.env.local
+.dev.vars*
+!.dev.vars.example
+.wrangler
+
+.DS_Store
+Thumbs.db

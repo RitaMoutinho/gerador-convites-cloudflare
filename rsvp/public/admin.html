@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Painel · Confirmações</title>
+<style>
+  :root{--bg:#f4f1ee;--card:#fff;--ink:#27221f;--muted:#7a7068;--line:#e5ddd5;--ok:#2f7d54;--no:#9a4a4a;--wait:#a07a1e;--accent:#a8556b}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);padding:16px}
+  .wrap{max-width:980px;margin:0 auto}
+  h1{font-size:22px;margin:4px 0 14px}
+  .card{background:var(--card);border-radius:16px;padding:16px;box-shadow:0 4px 16px rgba(60,40,30,.07)}
+  input[type=text],input[type=password]{font:inherit;font-size:16px;padding:11px 13px;border:1.5px solid var(--line);border-radius:10px;width:100%}
+  button{font:inherit;cursor:pointer}
+  .primary{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:11px 18px;font-weight:700}
+  .login{max-width:360px;margin:60px auto;display:flex;flex-direction:column;gap:12px}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px}
+  .stat{background:var(--card);border-radius:14px;padding:12px 14px;box-shadow:0 4px 16px rgba(60,40,30,.07)}
+  .stat b{display:block;font-size:28px;line-height:1.1}
+  .stat span{color:var(--muted);font-size:13.5px}
+  .stat.ok b{color:var(--ok)} .stat.no b{color:var(--no)} .stat.wait b{color:var(--wait)}
+  .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:14px 0}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap}
+  .tab{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:7px 14px;font-size:14.5px}
+  .tab.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .bar input{flex:1;min-width:160px}
+  .ghost{background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:9px 13px;font-size:14.5px}
+  table{width:100%;border-collapse:collapse;font-size:15px}
+  th{text-align:left;color:var(--muted);font-weight:600;font-size:13px;padding:8px 8px;border-bottom:1.5px solid var(--line)}
+  td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+  .badge{display:inline-block;border-radius:999px;padding:3px 10px;font-size:13px;font-weight:600}
+  .b-yes{background:#e9f6ee;color:var(--ok)} .b-no{background:#fbeeee;color:var(--no)} .b-wait{background:#fbf3df;color:var(--wait)}
+  .muted{color:var(--muted);font-size:13px}
+  .acts{white-space:nowrap}
+  .acts button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:4px 9px;font-size:13px;margin-left:4px}
+  .err{color:var(--no)}
+  .scroll{overflow-x:auto}
+  [hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="login" class="card login" hidden>
+    <h1 style="margin:0">Painel de confirmações</h1>
+    <input type="password" id="pw" placeholder="Senha" autocomplete="current-password">
+    <button class="primary" id="enter">Entrar</button>
+    <div class="err" id="lerr"></div>
+  </div>
+
+  <div id="panel" hidden>
+    <h1>Painel de confirmações</h1>
+    <div class="stats" id="stats"></div>
+    <div class="card">
+      <div class="bar">
+        <div class="tabs" id="tabs"></div>
+        <input type="text" id="filter" placeholder="Buscar nome…">
+        <button class="ghost" id="csv">⬇ Baixar planilha</button>
+        <button class="ghost" id="reload">↻ Atualizar</button>
+      </div>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>#</th><th>Nome</th><th>Situação</th><th>Preenchido por</th><th>Recado</th><th>Quando</th><th></th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <p class="muted" id="foot"></p>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var pw = ''; try { pw = sessionStorage.getItem('adm') || ''; } catch (e) {}
+  var data = [], tab = 'all';
+
+  function api(path, opts) {
+    opts = opts || {}; opts.headers = Object.assign({ authorization: 'Bearer ' + pw }, opts.headers || {});
+    return fetch(path, opts).then(function (r) { return r.json().then(function (j) { if (!r.ok) { var e = new Error(j.error || 'Erro'); e.status = r.status; throw e; } return j; }); });
+  }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function fmt(iso) { if (!iso) return ''; var d = new Date(iso); return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); }
+  function st(g) { return g.status === 'yes' ? 'yes' : g.status === 'no' ? 'no' : 'wait'; }
+  function norm(s) { return String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+
+  function load() {
+    return api('/api/admin/data').then(function (r) {
+      data = r.guests; $('login').hidden = true; $('panel').hidden = false; render();
+    }).catch(function (e) {
+      if (e.status === 401) { $('panel').hidden = true; $('login').hidden = false; $('lerr').textContent = pw ? 'Senha incorreta.' : ''; pw = ''; try { sessionStorage.removeItem('adm'); } catch (x) {} }
+      else alert(e.message);
+    });
+  }
+
+  function render() {
+    var yes = data.filter(function (g) { return g.status === 'yes'; });
+    var no = data.filter(function (g) { return g.status === 'no'; });
+    var wait = data.filter(function (g) { return !g.status; });
+    var yesKids = yes.filter(function (g) { return g.kid; }).length;
+    var counts = { all: data.length, yes: yes.length, no: no.length, wait: wait.length };
+
+    var s = $('stats'); s.textContent = '';
+    [['Convidados', data.length, ''], ['Confirmados', yes.length, 'ok'], ['Adultos confirmados', yes.length - yesKids, 'ok'], ['Crianças confirmadas', yesKids, 'ok'],
+     ['Não vão', no.length, 'no'], ['Sem resposta', wait.length, 'wait']].forEach(function (x) {
+      var d = el('div', 'stat ' + x[2]); d.appendChild(el('b', '', x[1])); d.appendChild(el('span', '', x[0])); s.appendChild(d);
+    });
+
+    var t = $('tabs'); t.textContent = '';
+    [['all', 'Todos'], ['yes', 'Confirmados'], ['no', 'Não vão'], ['wait', 'Sem resposta']].forEach(function (x) {
+      var b = el('button', 'tab' + (tab === x[0] ? ' on' : ''), x[1] + ' (' + counts[x[0]] + ')');
+      b.addEventListener('click', function () { tab = x[0]; render(); }); t.appendChild(b);
+    });
+
+    var q = norm($('filter').value.trim());
+    var list = data.filter(function (g) { return (tab === 'all' || st(g) === tab) && (!q || norm(g.name).indexOf(q) !== -1); });
+    var body = $('rows'); body.textContent = '';
+    list.forEach(function (g) {
+      var tr = el('tr');
+      tr.appendChild(el('td', 'muted', g.id));
+      var nm = el('td', '', g.name + (g.label ? ' (' + g.label + ')' : '')); if (g.kid) nm.appendChild(el('div', 'muted', 'criança' + (g.age ? ' · ' + g.age + ' anos' : ''))); tr.appendChild(nm);
+      var sd = el('td'); sd.appendChild(el('span', 'badge b-' + st(g), g.status === 'yes' ? 'Vai' : g.status === 'no' ? 'Não vai' : 'Sem resposta')); tr.appendChild(sd);
+      tr.appendChild(el('td', 'muted', g.status && g.by_id !== g.id ? g.by_name : g.status ? 'ele(a) mesmo(a)' : ''));
+      tr.appendChild(el('td', '', g.note || ''));
+      tr.appendChild(el('td', 'muted', fmt(g.at)));
+      var a = el('td', 'acts');
+      [['yes', '✓'], ['no', '✗'], [null, '↺']].forEach(function (x) {
+        var b = el('button', '', x[1]); b.title = x[0] === 'yes' ? 'Marcar que vai' : x[0] === 'no' ? 'Marcar que não vai' : 'Limpar resposta';
+        b.addEventListener('click', function () {
+          api('/api/admin/set', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: g.id, status: x[0] }) }).then(load).catch(function (e) { alert(e.message); });
+        }); a.appendChild(b);
+      });
+      tr.appendChild(a); body.appendChild(tr);
+    });
+    $('foot').textContent = list.length + ' na lista. Os botões ✓ ✗ ↺ servem pra marcar na mão quem avisou por fora (ex.: WhatsApp).';
+  }
+
+  function csv() {
+    var rows = [['Nº', 'Nome', 'Tipo', 'Idade', 'Situação', 'Preenchido por', 'Recado', 'Quando']];
+    data.forEach(function (g) {
+      rows.push([g.id, g.name, g.kid ? 'Criança' : 'Adulto', g.age || '', g.status === 'yes' ? 'Vai' : g.status === 'no' ? 'Não vai' : 'Sem resposta',
+        g.status ? (g.by_id !== g.id ? g.by_name : 'ele(a) mesmo(a)') : '', g.note || '', g.at ? fmt(g.at) : '']);
+    });
+    var text = rows.map(function (r) { return r.map(function (c) { return '"' + String(c).replace(/"/g, '""') + '"'; }).join(';'); }).join('\r\n');
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['﻿' + text], { type: 'text/csv;charset=utf-8' }));
+    a.download = 'confirmacoes.csv'; document.body.appendChild(a); a.click(); a.remove();
+  }
+
+  $('enter').addEventListener('click', function () { pw = $('pw').value; try { sessionStorage.setItem('adm', pw); } catch (e) {} load(); });
+  $('pw').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('enter').click(); });
+  $('filter').addEventListener('input', render);
+  $('reload').addEventListener('click', load);
+  $('csv').addEventListener('click', csv);
+  setInterval(function () { if (!$('panel').hidden) load(); }, 30000);
+
+  load();   // tenta entrar direto; se o servidor pedir senha, mostra o login
+})();
+</script>
+</body>
+</html>
