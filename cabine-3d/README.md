@@ -44,3 +44,32 @@ Opções: `--scale 0.5` (resolução), `--samples N`, `--exposure X`, `--all` (r
 2. Refinar console, vigas e iluminação (a parte que mais pesa na semelhança).
 3. Anexar o `.ply`/`.glb` para avaliação técnica.
 4. Bake + exportação GLB otimizada.
+
+---
+## Atualização: astronauta removido, Lua + Terra, otimização (`otimizar_cabine.py`)
+Roda sobre `out/cabine_clps_ORIGINAL_backup.blend` (cópia intocada) e gera `out/cabine_clps_otimizada.blend`.
+
+- **Astronauta:** 16 objetos removidos (inclui o logo NASA do traje, que era só dele) + materiais órfãos. Caneca/logo NASA da caneca, luminária e demais decorações intactos.
+- **Composição:** `LUA_Esfera` (raio ~16,6 m a 180 m, centro-esquerda da janela) em primeiro plano; Terra a 900 m, menor, acima/direita e parcialmente atrás da Lua.
+- **Origem do ruído (medida, 2 sementes sem denoise):** casca da atmosfera da Terra (Mix Shader estocástico) ≈ −30% de ruído ao remover; luzes de preenchimento grandes com sombra ≈ −23%; Bevel node não gera ruído mas custava ≈ 20% do tempo. Geometria e céu **não** eram a causa. O ruído do viewport vinha de preview 1024 amostras **sem** denoise.
+- **Correções:** atmosfera = Transparente + Emissão (aditivo); fills sem sombra; Bevel 8→4 amostras; rochas ~1280→~320 tris; terreno 56,7 mil→33,3 mil polígonos (decimação 50%); Cycles 64 amostras adaptativas + OIDN, caustics off, clamp indireto 5; viewport 48 amostras + denoise.
+- **Resultado (800×450, denoise):** 106,9 s → 71,6 s (−33%); ruído a 16 amostras 0,0737 → 0,0495 (−33%) mesmo com a Lua nova na cena.
+- **Coleções:** CABINE_ESTRUTURA, JANELAS, PAINEL_CONTROLE (+CONTROLES), MONITORES, DECORACOES, ESPACO_EXTERIOR (+TERRENO_LUNAR, TERRA, LUA, CEU), ILUMINACAO, CAMERAS. Objetos não foram renomeados.
+- **Texturas:** a cena não usa imagens (tudo procedural), então não havia textura pesada pra reduzir.
+- **Joystick `.glb` anexado:** NÃO foi usado. Tem 281 mil vértices e 2 texturas WebP (~13 MB), pesado demais pra web; o joystick atual da cena tem poucas centenas de polígonos.
+
+---
+## Atualização v3: refino visual e estrutural (`refinar_cabine.py`)
+Roda sobre `out/cabine_clps_v2_backup.blend` (cópia intocada) e gera `out/cabine_clps_v3.blend`. Precisa do joystick: `--joy caminho/modelojoystick.glb`.
+
+- **Monitor esquerdo:** removida `CON_Carcaca_Esquerda` (a caixa que engolia a tela); caixa traseira 20→8 cm; tampa superior fina (a luminária apoia nela); pedestal + sapata.
+- **Três monitores:** pedestal e sapata aparafusada na bancada, aro interno escuro em volta da tela. As telas `SCR_*_Tela` não foram tocadas.
+- **Botões:** os 18 blocos antigos saíram. Novos: aro metálico com cavidade, fundo escuro, tecla de cantos arredondados 2 mm abaixo do aro, em placas por grupo, sobre um painel inclinado ~19° pro usuário (`CON_Console_Botoes`). Âmbar ×2 (auxiliares), verde ×3 (principais), branco ×2 (secundários), vermelho ×1 (alerta). Indicadores laterais âmbar encaixados na bancada.
+- **Lua/Terra:** havia uma só de cada (sem duplicação). Lua menor, à esquerda, a 180 m; Terra a 900 m, acima e à direita.
+- **Joystick:** o "vaso" era o joystick provisório (`CTL_Joystick_*`), removido. Instalado o `.glb` fornecido (`JOY_Joystick`, geometria e texturas originais, escala 0,165) num soquete nivelado e aparafusado.
+- **Soltos/sem função:** 5 `CAB_Suporte_*` atravessavam bancada e monitores (um era o bloco sob o monitor central) → removidos, função assumida pelos pedestais. Grelha esquerda solta (o bloco retangular perto do vaso) → removida. Grelha direita, interruptores, cabos e caneca → reassentados na bancada.
+- **Bancada:** frisos de transição no fundo e na borda frontal, juntas discretas dos módulos, chanfro maior.
+- **Materiais:** tela menos espelhada, piso de rugosidade nos metais, lâmpadas âmbar sem estourar em branco.
+- **Granulado:** as causas reais foram medidas e corrigidas na v2 (atmosfera da Terra e luzes de preenchimento); o que sobra no viewport é só baixa amostragem, resolvida pelo denoise.
+- **Coleções:** CABINE_ESTRUTURA (+JANELAS), PAINEL_CONTROLE, BOTOES, MONITORES, JOYSTICK, DECORACOES, LUA, TERRA, CENARIO_ESPACIAL (+TERRENO_LUNAR, CEU), ILUMINACAO, CAMERAS.
+- Renders: `out/v3_principal.png`, `out/v3_superior.png`, `out/v3_close_esquerda.png`, `out/v3_close_botoes.png`.
